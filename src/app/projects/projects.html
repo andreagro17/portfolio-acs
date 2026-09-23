@@ -1,4 +1,36 @@
 <section class="projects">
-  <h1 class="projects-title">Proyectos</h1>
-  <p class="projects-subtitle">Próximamente: una selección de mis trabajos.</p>
+  <header class="projects-head">
+    <h1 class="projects-title">Proyectos</h1>
+    <p class="projects-subtitle">Una selección de trabajos en front-end, SAP y visualización de datos.</p>
+  </header>
+
+  <div class="filters" role="group" aria-label="Filtrar por tecnología">
+    @for (tag of tags; track tag) {
+      <button
+        type="button"
+        class="chip"
+        [class.is-active]="activeTag() === tag"
+        [attr.aria-pressed]="activeTag() === tag"
+        (click)="selectTag(tag)"
+      >{{ tag }}</button>
+    }
+  </div>
+
+  <ul class="grid">
+    @for (project of filtered(); track project.name) {
+      <li class="card" [class.is-featured]="project.featured">
+        <div class="card-head">
+          <h2 class="card-name">{{ project.name }}</h2>
+          <span class="card-client">{{ project.client }}</span>
+        </div>
+        <p class="card-sector">{{ project.sector }}</p>
+        <p class="card-desc">{{ project.description }}</p>
+        <ul class="tags">
+          @for (tag of project.tags; track tag) {
+            <li class="tag">{{ tag }}</li>
+          }
+        </ul>
+      </li>
+    }
+  </ul>
 </section>
