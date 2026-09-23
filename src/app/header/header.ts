@@ -1,8 +1,10 @@
 import { isPlatformBrowser } from '@angular/common';
 import {
   AfterViewInit,
+  ChangeDetectionStrategy,
   Component,
   ElementRef,
+  NgZone,
   OnDestroy,
   PLATFORM_ID,
   ViewChild,
@@ -19,14 +21,16 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
   selector: 'app-header',
   templateUrl: './header.html',
   styleUrl: './header.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 
 export class Header implements AfterViewInit, OnDestroy {
 
   @ViewChild('headerContainer', { static: true })
-  private readonly headerContainer!: ElementRef<HTMLDivElement>;
+  private readonly headerContainer!: ElementRef<HTMLElement>;
 
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly ngZone = inject(NgZone);
 
   private scene?: THREE.Scene;
   private camera?: THREE.PerspectiveCamera;
@@ -44,7 +48,9 @@ export class Header implements AfterViewInit, OnDestroy {
     this.createText();
     this.createFish();
     this.initializeResizeObserver();
-    this.animate();
+
+    // El render loop corre fuera de Angular para no disparar change detection cada frame.
+    this.ngZone.runOutsideAngular(() => this.animate());
   }
     ngOnDestroy(): void {
     if (this.animationFrameId !== undefined) {
@@ -146,39 +152,68 @@ export class Header implements AfterViewInit, OnDestroy {
       return;
     }
 
-    for (let index = 0; index < 4; index += 1) {
+    const palette = [
+      { body: 0xff9f43, fin: 0xffd38a },
+      { body: 0xff6b9d, fin: 0xffc2d6 },
+      { body: 0x54d1ff, fin: 0xb5ecff },
+      { body: 0x9d7bff, fin: 0xd8c9ff },
+    ];
+
+    for (let index = 0; index < palette.length; index += 1) {
+      const colors = palette[index];
       const fish = new THREE.Group();
 
-      const body = new THREE.Mesh(
-        new THREE.SphereGeometry(0.25, 16, 8),
-        new THREE.MeshStandardMaterial({
-          color: index % 2 === 0 ? 0xffb86c : 0xff79c6,
-          roughness: 0.4,
-        }),
-      );
+      const bodyMaterial = new THREE.MeshStandardMaterial({
+        color: colors.body,
+        roughness: 0.3,
+        metalness: 0.2,
+        emissive: colors.body,
+        emissiveIntensity: 0.12,
+      });
 
-      body.scale.x = 1.5;
+      const finMaterial = new THREE.MeshStandardMaterial({
+        color: colors.fin,
+        roughness: 0.5,
+        metalness: 0.05,
+        transparent: true,
+        opacity: 0.9,
+        side: THREE.DoubleSide,
+      });
 
-      const tail = new THREE.Mesh(
-        new THREE.ConeGeometry(0.2, 0.45, 3),
-        new THREE.MeshStandardMaterial({
-          color: 0x50fa7b,
-          roughness: 0.4,
-        }),
-      );
+      // Cuerpo: esfera alargada y aplanada para dar silueta de pez.
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.28, 24, 16), bodyMaterial);
+      body.scale.set(1.6, 0.85, 0.7);
+      body.castShadow = true;
 
-      tail.rotation.z = -Math.PI / 2;
-      tail.position.x = -0.45;
+      // Aleta dorsal.
+      const dorsal = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 4), finMaterial);
+      dorsal.scale.z = 0.1;
+      dorsal.rotation.z = -0.35;
+      dorsal.position.set(-0.05, 0.2, 0);
 
-      fish.add(body, tail);
-      fish.position.set(
-        -3 + index * 2,
-        -0.8 + index * 0.45,
-        -1.5,
-      );
+      // Cola: grupo con aleta plana en abanico que se agita al nadar.
+      const tail = new THREE.Group();
+      const tailFin = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.4, 4), finMaterial);
+      tailFin.rotation.z = -Math.PI / 2;
+      tailFin.scale.z = 0.12;
+      tailFin.position.x = -0.2;
+      tail.add(tailFin);
+      tail.position.x = -0.42;
+
+      // Ojos a ambos lados del morro.
+      const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0x0b1622, roughness: 0.2 });
+      const eyeGeometry = new THREE.SphereGeometry(0.05, 12, 12);
+      for (const side of [1, -1]) {
+        const eye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        eye.position.set(0.3, 0.06, side * 0.14);
+        fish.add(eye);
+      }
+
+      fish.add(body, dorsal, tail);
+      fish.position.set(-3 + index * 2, -0.8 + index * 0.45, -1.5);
 
       fish.userData['speed'] = 0.4 + index * 0.1;
-      fish.castShadow = true;
+      fish.userData['tail'] = tail;
 
       this.scene.add(fish);
       this.fish.push(fish);
@@ -228,6 +263,11 @@ export class Header implements AfterViewInit, OnDestroy {
 
       fish.position.y += Math.sin(time * 2 + index) * 0.002;
       fish.rotation.z = Math.sin(time * 2 + index) * 0.08;
+
+      const tail = fish.userData['tail'] as THREE.Object3D | undefined;
+      if (tail) {
+        tail.rotation.y = Math.sin(time * 6 + index) * 0.5;
+      }
     });
 
     this.renderer.render(this.scene, this.camera);
