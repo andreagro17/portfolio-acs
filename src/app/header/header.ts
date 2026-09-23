@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
-import { ThemeService } from '../theme.service';
+import { ThemeService } from '../services/theme.service';
+import { SketchService } from '../services/sketch.service';
 
 interface NavLink {
   readonly label: string;
@@ -16,8 +17,10 @@ interface NavLink {
 })
 export class Header {
   private readonly themeService = inject(ThemeService);
+  private readonly sketchService = inject(SketchService);
 
   protected readonly theme = this.themeService.theme;
+  protected readonly sketch = this.sketchService.enabled;
   protected readonly menuOpen = signal(false);
 
   protected readonly links: readonly NavLink[] = [
@@ -36,5 +39,9 @@ export class Header {
 
   protected toggleTheme(): void {
     this.themeService.toggle();
+  }
+
+  protected toggleSketch(): void {
+    this.sketchService.toggle();
   }
 }

@@ -9,7 +9,8 @@
  */
 import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, signal, OnDestroy, ViewChild, Inject, PLATFORM_ID, effect, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { ThemeService } from '../theme.service';
+import { ThemeService } from '../services/theme.service';
+import { SketchService } from '../services/sketch.service';
 
 /*
  * Three.js y sus utilidades:
@@ -22,54 +23,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-
-/*
- * ItemInfo describe el texto que se mostrará en el popup
- * cuando el usuario haga clic sobre un objeto 3D.
- */
-interface ItemInfo {
-  title: string;
-  description: string;
-}
-
-/*
- * FloatingItemConfig es la "receta" de cada objeto flotante.
- *
- * Definir cada objeto como datos (y no como código repetido)
- * permite añadir o quitar objetos cambiando solo este array.
- *
- * - id: identificador único del objeto.
- * - url: ruta del modelo .glb dentro de /public.
- * - position: posición [x, y, z] en la escena.
- * - scale: tamaño final (dimensión mayor) al que se normaliza.
- * - rotation: orientación estática opcional [x, y, z] en radianes.
- * - floatHeight: cuánto sube el objeto durante su entrada.
- * - speed: velocidad de la animación de entrada.
- * - info: texto del popup.
- */
-interface FloatingItemConfig {
-  id: string;
-  url: string;
-  position: [number, number, number];
-  scale: number;
-  rotation?: [number, number, number];
-  floatHeight?: number;
-  speed?: number;
-  info: ItemInfo;
-}
-
-/*
- * FloatingItem representa un objeto ya cargado y en escena.
- *
- * Guarda su configuración original, el grupo 3D que lo contiene,
- * la escala objetivo calculada y el progreso de su animación (0 a 1).
- */
-interface FloatingItem {
-  config: FloatingItemConfig;
-  group: THREE.Group;
-  targetScale: number;
-  progress: number;
-}
+import { FloatingItem, FloatingItemConfig, ItemInfo } from '../models/floating-item.model';
+import { FLOATING_ITEM_CONFIGS } from '../config/floating-items.config';
 
 
 
@@ -101,6 +56,12 @@ export class About implements AfterViewInit, OnDestroy {
   private avatar?: THREE.Object3D;
   private avatarProgress = 0;
 
+  // Material del avatar, que reutilizamos en los items para un look homogéneo
+  private avatarMaterial?: THREE.Material;
+
+  // Variante en wireframe para modelos sin UVs (evita que se oculten)
+  private avatarMaterialSolid?: THREE.Material;
+
   // Lista de objetos flotantes ya cargados en la escena
   private floatingItems: FloatingItem[] = [];
 
@@ -117,6 +78,9 @@ export class About implements AfterViewInit, OnDestroy {
   // Servicio de tema (claro / oscuro) para adaptar el fondo de la escena.
   private readonly themeService = inject(ThemeService);
 
+  // Servicio del efecto boceto: alterna la textura de los items.
+  private readonly sketch = inject(SketchService);
+
   /*
    * selectedInfo es un signal que guarda la info del objeto pulsado.
    * Cuando tiene valor, el HTML muestra el popup; cuando es null, se oculta.
@@ -124,48 +88,9 @@ export class About implements AfterViewInit, OnDestroy {
   readonly selectedInfo = signal<ItemInfo | null>(null);
 
   /*
-   * Configuración de los objetos flotantes.
-   * Añadir uno nuevo es tan simple como añadir un objeto a este array.
+   * Configuración de los objetos flotantes (definida fuera del componente).
    */
-  private readonly itemConfigs: FloatingItemConfig[] = [
-    {
-      id: 'book',
-      url: '/wheat.glb',
-      position: [1.2, 0.5, 0],
-      scale: 0.5,
-      // rotation: [-Math.PI / 2, 0, 0],
-      floatHeight: 0.3,
-      speed: 0.0015,
-      info: {
-        title: 'Lectura',
-        description: 'Me encanta aprender cosas nuevas leyendo libros de tecnología y ficción.',
-      },
-    },
-    {
-      id: 'wheat',
-      url: '/tree2.glb',
-      position: [-1.2, 0.5, 0],
-      scale: 0.5,
-      floatHeight: 0.3,
-      speed: 0.0015,
-      info: {
-        title: 'Naturaleza',
-        description: 'Disfruto del aire libre y de los paisajes de campo para desconectar.',
-      },
-    },
-    {
-      id: 'sport',
-      url: '/sport.glb',
-      position: [0, 0.5, 0.8],
-      scale: 0.5,
-      floatHeight: 0.3,
-      speed: 0.0015,
-      info: {
-        title: 'Deporte',
-        description: 'Practicar deporte me ayuda a mantener el equilibrio entre cuerpo y mente.',
-      },
-    },
-  ];
+  private readonly itemConfigs: FloatingItemConfig[] = FLOATING_ITEM_CONFIGS;
 
 
   /*
@@ -179,6 +104,14 @@ export class About implements AfterViewInit, OnDestroy {
       const color = this.sceneColor(this.themeService.theme());
       if (this.scene) {
         this.scene.background = new THREE.Color(color);
+      }
+    });
+
+    // Cuando se activa/desactiva el efecto, re-aplicamos el material a cada item.
+    effect(() => {
+      this.sketch.enabled();
+      for (const item of this.floatingItems) {
+        this.applyItemStyle(item);
       }
     });
   }
@@ -312,6 +245,39 @@ export class About implements AfterViewInit, OnDestroy {
         this.avatar = avatar;
         this.scene.add(avatar);
 
+        /*
+         * Guardamos el material del avatar (el primero que encontremos)
+         * para reutilizarlo en los items y que todos compartan la misma
+         * textura. Lo aplicamos también a los items ya cargados.
+         */
+        avatar.traverse((child) => {
+          const mesh = child as THREE.Mesh;
+          if (mesh.isMesh && !this.avatarMaterial) {
+            const material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+            const clone = material.clone();
+            // Doble cara: evita que modelos finos (p.ej. trigo) desaparezcan
+            clone.side = THREE.DoubleSide;
+            this.avatarMaterial = clone;
+
+            /*
+             * Respaldo para mallas SIN coordenadas UV: la textura del avatar
+             * las dejaría invisibles, así que usamos un wireframe opaco que
+             * conserva el aire "de líneas" y siempre se ve.
+             */
+            const solid = material.clone() as THREE.MeshStandardMaterial;
+            solid.side = THREE.DoubleSide;
+            solid.map = null;
+            solid.transparent = false;
+            solid.opacity = 1;
+            solid.depthWrite = true;
+            solid.wireframe = true;
+            this.avatarMaterialSolid = solid;
+          }
+        });
+        for (const item of this.floatingItems) {
+          this.applyItemStyle(item);
+        }
+
         // Distancia de cámara proporcional al tamaño del modelo
         const maxSize = Math.max(size.x, size.y, size.z);
         const distance = maxSize * 2.2;
@@ -324,6 +290,31 @@ export class About implements AfterViewInit, OnDestroy {
         console.error('No se pudo cargar el avatar:', error);
       }
     );
+  }
+
+  /*
+   * applyItemStyle decide qué material lleva un item:
+   * - efecto activo: usa el material del avatar (misma textura).
+   * - efecto inactivo: restaura su material original.
+   */
+  private applyItemStyle(item: FloatingItem): void {
+    const useSketch = this.sketch.enabled();
+    item.model.traverse((child) => {
+      const mesh = child as THREE.Mesh;
+      if (!mesh.isMesh) {
+        return;
+      }
+      if (useSketch && this.avatarMaterial) {
+        // Sin UVs la textura del avatar no se puede mapear: usamos el wireframe.
+        const hasUV = !!mesh.geometry.attributes['uv'];
+        mesh.material = hasUV ? this.avatarMaterial : (this.avatarMaterialSolid ?? this.avatarMaterial);
+      } else {
+        const original = item.originalMaterials.get(mesh);
+        if (original) {
+          mesh.material = original;
+        }
+      }
+    });
   }
 
   /*
@@ -368,7 +359,16 @@ export class About implements AfterViewInit, OnDestroy {
           const group = new THREE.Group();
           group.add(model);
 
-          // Esfera de cristal translúcida que contiene el objeto
+          // Guardamos los materiales originales para poder alternar el efecto
+          const originalMaterials = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
+          model.traverse((child) => {
+            const mesh = child as THREE.Mesh;
+            if (mesh.isMesh) {
+              originalMaterials.set(mesh, mesh.material);
+            }
+          });
+
+          // Esfera de cristal translúcida que envuelve el objeto
           const bubbleRadius = maxDim * 0.75;
           const bubble = new THREE.Mesh(
             new THREE.SphereGeometry(bubbleRadius, 32, 32),
@@ -388,7 +388,10 @@ export class About implements AfterViewInit, OnDestroy {
 
           this.scene.add(group);
           // Guardamos el item para animarlo y detectar clics después
-          this.floatingItems.push({ config, group, targetScale, progress: 0 });
+          const item: FloatingItem = { config, group, model, originalMaterials, targetScale, progress: 0 };
+          // Aplicamos el estilo actual (normal o efecto boceto)
+          this.applyItemStyle(item);
+          this.floatingItems.push(item);
         },
         undefined,
         (error: unknown) => {

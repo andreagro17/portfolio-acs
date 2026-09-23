@@ -20,6 +20,26 @@
   <div class="actions">
     <button
       type="button"
+      class="effect-toggle"
+      [class.is-on]="sketch()"
+      [attr.aria-pressed]="sketch()"
+      [attr.aria-label]="sketch() ? 'Quitar efecto boceto' : 'Aplicar efecto boceto'"
+      (click)="toggleSketch()"
+    >
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+        <path
+          d="m14.7 6.3 3 3M4 20l1-3.8 9.3-9.3a1.8 1.8 0 0 1 2.5 0l1.3 1.3a1.8 1.8 0 0 1 0 2.5L8.8 20 4 20Z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </button>
+
+    <button
+      type="button"
       class="theme-toggle"
       [attr.aria-pressed]="theme() === 'dark'"
       [attr.aria-label]="theme() === 'dark' ? 'Activar modo claro' : 'Activar modo oscuro'"
