@@ -98,11 +98,19 @@ export class Header implements AfterViewInit, OnDestroy {
       alpha: true,
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setSize(width, height);
+    this.renderer.setSize(width, height, false);
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
 
-    container.appendChild(this.renderer.domElement);
+    // El canvas lo crea Three sin atributos de Angular, así que lo posicionamos por estilo inline.
+    const canvas = this.renderer.domElement;
+    canvas.style.position = 'absolute';
+    canvas.style.inset = '0';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.display = 'block';
+
+    container.appendChild(canvas);
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 3);

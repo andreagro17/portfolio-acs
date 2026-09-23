@@ -175,13 +175,19 @@ export class Home implements AfterViewInit, OnDestroy {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
     // El canvas ocupa el tamaño del contenedor
-    this.renderer.setSize(container.clientWidth, container.clientHeight);
+    this.renderer.setSize(container.clientWidth, container.clientHeight, false);
 
     // Configuración correcta de color para mostrar colores naturales
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
+    // El canvas lo crea Three sin atributos de Angular, lo dimensionamos por estilo inline.
+    const canvas = this.renderer.domElement;
+    canvas.style.display = 'block';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+
     // Insertamos el canvas generado por Three.js en el HTML
-    container.appendChild(this.renderer.domElement);
+    container.appendChild(canvas);
     
     /*
      * La geometría define la forma del objeto.
