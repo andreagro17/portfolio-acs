@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 interface NavLink {
   readonly label: string;
@@ -6,6 +7,7 @@ interface NavLink {
 }
 
 @Component({
+  imports: [RouterLink],
   selector: 'app-header',
   templateUrl: './header.html',
   styleUrl: './header.scss',
@@ -15,10 +17,10 @@ export class Header {
   protected readonly menuOpen = signal(false);
 
   protected readonly links: readonly NavLink[] = [
-    { label: 'Inicio', href: '#inicio' },
-    { label: 'Proyectos', href: '#proyectos' },
-    { label: 'Sobre mí', href: '#sobre-mi' },
-    { label: 'Contacto', href: '#contacto' },
+    { label: 'Inicio', href: '/' },
+    { label: 'Proyectos', href: '/projects' },
+    { label: 'Sobre mí', href: '/about' },
+    { label: 'Contacto', href: '/contact' },
   ];
 
   protected toggleMenu(): void {

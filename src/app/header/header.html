@@ -1,5 +1,5 @@
 <nav class="navbar" aria-label="Navegación principal">
-  <a class="brand" href="#inicio" (click)="closeMenu()">
+  <a class="brand" routerLink="/" (click)="closeMenu()">
     <span class="brand-mark">A</span>
     <span class="brand-name">Andrea</span>
   </a>
@@ -21,7 +21,7 @@
   <ul id="primary-navigation" class="nav-links" [class.is-open]="menuOpen()">
     @for (link of links; track link.href) {
       <li>
-        <a [href]="link.href" (click)="closeMenu()">{{ link.label }}</a>
+        <a [routerLink]="link.href" (click)="closeMenu()">{{ link.label }}</a>
       </li>
     }
   </ul>

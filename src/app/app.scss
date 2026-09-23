@@ -1,37 +1,20 @@
 :host {
   display: block;
-  width: 100%;
   min-height: 100dvh;
+  overflow: hidden;
 }
 
 .main {
   position: relative;
-  display: flex;
-  flex-direction: column;
+
   width: 100%;
-  min-height: 100dvh;
+  height: 100dvh;
+
+  overflow: hidden;
+
+  // Reserva el espacio visual ocupado por el header.
+  // padding-top: var(--header-height);
+
+  box-sizing: border-box;
 }
 
-app-header {
-  flex: 0 0 auto;
-}
-
-app-hero {
-  flex: 0 0 auto;
-}
-
-app-home {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.avatar {
-  position: absolute;
-  top: 2rem;
-  right: 2rem;
-  z-index: 10;
-  width: 180px;
-  height: 180px;
-}
