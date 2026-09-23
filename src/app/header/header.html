@@ -1,6 +1,28 @@
-<header #headerContainer class="header-scene">
-  <div class="header-content">
-    <span class="eyebrow">Creative developer</span>
-    <h1>Andrea</h1>
-  </div>
-</header>
+<nav class="navbar" aria-label="Navegación principal">
+  <a class="brand" href="#inicio" (click)="closeMenu()">
+    <span class="brand-mark">A</span>
+    <span class="brand-name">Andrea</span>
+  </a>
+
+  <button
+    type="button"
+    class="menu-toggle"
+    [class.is-open]="menuOpen()"
+    [attr.aria-expanded]="menuOpen()"
+    aria-controls="primary-navigation"
+    aria-label="Abrir menú"
+    (click)="toggleMenu()"
+  >
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+
+  <ul id="primary-navigation" class="nav-links" [class.is-open]="menuOpen()">
+    @for (link of links; track link.href) {
+      <li>
+        <a [href]="link.href" (click)="closeMenu()">{{ link.label }}</a>
+      </li>
+    }
+  </ul>
+</nav>
