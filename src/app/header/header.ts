@@ -17,9 +17,8 @@ export class Header {
   protected readonly menuOpen = signal(false);
 
   protected readonly links: readonly NavLink[] = [
-    { label: 'Inicio', href: '/' },
+    { label: 'Sobre mí', href: '/' },
     { label: 'Proyectos', href: '/projects' },
-    { label: 'Sobre mí', href: '/about' },
     { label: 'Contacto', href: '/contact' },
   ];
 

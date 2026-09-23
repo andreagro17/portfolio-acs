@@ -1,1 +1,11 @@
 <div #avatarContainer class="avatar-container"></div>
+
+@if (selectedInfo(); as info) {
+  <div class="info-overlay" (click)="closeInfo()">
+    <div class="info-card" (click)="$event.stopPropagation()">
+      <button type="button" class="info-close" (click)="closeInfo()" aria-label="Cerrar">×</button>
+      <h3 class="info-title">{{ info.title }}</h3>
+      <p class="info-description">{{ info.description }}</p>
+    </div>
+  </div>
+}
