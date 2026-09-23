@@ -25,6 +25,7 @@ import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { FloatingItem, FloatingItemConfig, ItemInfo } from '../models/floating-item.model';
 import { FLOATING_ITEM_CONFIGS } from '../config/floating-items.config';
+import { ABOUT_BIO, SKILL_GROUPS, EXPERIENCE } from '../config/about.config';
 
 
 
@@ -92,6 +93,26 @@ export class About implements AfterViewInit, OnDestroy {
    */
   private readonly itemConfigs: FloatingItemConfig[] = FLOATING_ITEM_CONFIGS;
 
+  // Contenido textual de la sección "Sobre mí".
+  protected readonly bio = ABOUT_BIO;
+  protected readonly skills = SKILL_GROUPS;
+  protected readonly experience = EXPERIENCE;
+
+  // Referencia al elemento del componente (contenedor con scroll).
+  private readonly host = inject(ElementRef<HTMLElement>);
+
+  /* Desplaza el propio contenedor hasta el contenido, sin usar anclas
+     nativas (#hash) que moverían ancestros con overflow:hidden y
+     empujarían el header fuera de vista. */
+  protected scrollToContent(): void {
+    const hostEl = this.host.nativeElement;
+    const target = hostEl.querySelector('#sobre-mi') as HTMLElement | null;
+    hostEl.scrollTo({
+      top: target ? target.offsetTop : hostEl.clientHeight,
+      behavior: 'smooth',
+    });
+  }
+
 
   /*
    * Inyectamos PLATFORM_ID para poder distinguir entre:
@@ -140,6 +161,9 @@ export class About implements AfterViewInit, OnDestroy {
     this.animate();
     // 5) Escuchar clics sobre el canvas para mostrar el popup
     this.renderer.domElement.addEventListener('click', this.onCanvasClick);
+    // 6) Ajustar el canvas al tamaño de la ventana y redibujar al volver a la pestaña
+    window.addEventListener('resize', this.onResize);
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
     console.log('Componente About view inicializado');
   }
 
@@ -152,11 +176,43 @@ export class About implements AfterViewInit, OnDestroy {
     if (this.animationId !== undefined) {
       cancelAnimationFrame(this.animationId);
     }
-    // Quitar el listener de clics y liberar controles y renderer
+    // Quitar los listeners y liberar controles y renderer
     this.renderer?.domElement.removeEventListener('click', this.onCanvasClick);
+    window.removeEventListener('resize', this.onResize);
+    document.removeEventListener('visibilitychange', this.onVisibilityChange);
     this.controls?.dispose();
     this.renderer?.dispose();
   }
+
+  /*
+   * Reajusta cámara y renderer cuando cambia el tamaño de la ventana.
+   * Necesario porque el canvas ocupa toda la pantalla de forma fija.
+   */
+  private readonly onResize = (): void => {
+    const container = this.avatarContainer?.nativeElement;
+    if (!container || !this.renderer || !this.camera) {
+      return;
+    }
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    if (width === 0 || height === 0) {
+      return;
+    }
+    this.camera.aspect = width / height;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(width, height);
+    this.renderer.render(this.scene, this.camera);
+  };
+
+  /*
+   * Al volver a la pestaña, requestAnimationFrame estaba pausado.
+   * Redibujamos un frame para que la escena aparezca de inmediato.
+   */
+  private readonly onVisibilityChange = (): void => {
+    if (!document.hidden && this.renderer) {
+      this.onResize();
+    }
+  };
 
   /*
    * initThree crea los elementos básicos de una escena 3D:
@@ -284,6 +340,9 @@ export class About implements AfterViewInit, OnDestroy {
 
         this.camera.position.set(0, 0, distance);
         this.camera.lookAt(0, 0, 0);
+
+        // Dibujamos ya un frame: si rAF está pausado, el avatar se ve igual.
+        this.renderer.render(this.scene, this.camera);
       },
       undefined,
       (error: unknown) => {

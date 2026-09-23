@@ -12,6 +12,8 @@
   max-width: 960px;
   margin: 0 auto;
   padding: clamp(1.5rem, 5vw, 4rem);
+  // Aire extra abajo: main mide 100dvh y el header recorta la zona inferior.
+  padding-bottom: calc(var(--header-height) + 4rem);
   color: var(--text);
 }
 
