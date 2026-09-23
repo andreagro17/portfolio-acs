@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { RouterLink, RouterLinkActive } from '@angular/router';
+import { ThemeService } from '../theme.service';
 
 interface NavLink {
   readonly label: string;
@@ -7,13 +8,16 @@ interface NavLink {
 }
 
 @Component({
-  imports: [RouterLink],
+  imports: [RouterLink, RouterLinkActive],
   selector: 'app-header',
   templateUrl: './header.html',
   styleUrl: './header.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Header {
+  private readonly themeService = inject(ThemeService);
+
+  protected readonly theme = this.themeService.theme;
   protected readonly menuOpen = signal(false);
 
   protected readonly links: readonly NavLink[] = [
@@ -28,5 +32,9 @@ export class Header {
 
   protected closeMenu(): void {
     this.menuOpen.set(false);
+  }
+
+  protected toggleTheme(): void {
+    this.themeService.toggle();
   }
 }

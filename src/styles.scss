@@ -1,5 +1,34 @@
 :root {
   --header-height: 72px;
+
+  // Firma de marca (constante en ambos temas)
+  --accent-from: #22d3ee;
+  --accent-to: #6366f1;
+
+  // Tema claro (por defecto)
+  --bg: #f3f4f6;
+  --surface: #ffffff;
+  --text: #0f172a;
+  --text-muted: rgba(15, 23, 42, 0.66);
+  --border: rgba(15, 23, 42, 0.06);
+  --header-bg: rgba(255, 255, 255, 0.6);
+  --menu-bg: rgba(255, 255, 255, 0.92);
+  --shadow: rgba(15, 23, 42, 0.08);
+  --toggle-bar: #0f172a;
+  --scene-bg: #f3f4f6;
+}
+
+[data-theme='dark'] {
+  --bg: #0b1220;
+  --surface: #111a2e;
+  --text: #f4f7fb;
+  --text-muted: rgba(244, 247, 251, 0.7);
+  --border: rgba(255, 255, 255, 0.08);
+  --header-bg: rgba(11, 18, 32, 0.55);
+  --menu-bg: rgba(11, 18, 32, 0.92);
+  --shadow: rgba(0, 0, 0, 0.4);
+  --toggle-bar: #f4f7fb;
+  --scene-bg: #0b1220;
 }
 
 html,
@@ -14,6 +43,9 @@ body {
 
 body {
   min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 *,

@@ -7,8 +7,9 @@
  * - signal: estado reactivo (usamos uno para el popup de información).
  * - Inject / PLATFORM_ID: para saber si estamos en navegador o servidor.
  */
-import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, signal, OnDestroy, ViewChild, Inject, PLATFORM_ID } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, signal, OnDestroy, ViewChild, Inject, PLATFORM_ID, effect, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { ThemeService } from '../theme.service';
 
 /*
  * Three.js y sus utilidades:
@@ -113,6 +114,9 @@ export class About implements AfterViewInit, OnDestroy {
   // Identificador del bucle de animación, para poder detenerlo al destruir
   private animationId?: number;
 
+  // Servicio de tema (claro / oscuro) para adaptar el fondo de la escena.
+  private readonly themeService = inject(ThemeService);
+
   /*
    * selectedInfo es un signal que guarda la info del objeto pulsado.
    * Cuando tiene valor, el HTML muestra el popup; cuando es null, se oculta.
@@ -169,7 +173,20 @@ export class About implements AfterViewInit, OnDestroy {
    * - Navegador: existe WebGL, window y document.
    * - Servidor (SSR): no existen, así que evitamos ejecutar Three.js.
    */
-  constructor(@Inject(PLATFORM_ID) private platformId: object) { }
+  constructor(@Inject(PLATFORM_ID) private platformId: object) {
+    // Cuando cambia el tema, actualizamos el color de fondo de la escena.
+    effect(() => {
+      const color = this.sceneColor(this.themeService.theme());
+      if (this.scene) {
+        this.scene.background = new THREE.Color(color);
+      }
+    });
+  }
+
+  // Color de fondo de la escena 3D segun el tema actual.
+  private sceneColor(theme: 'light' | 'dark'): string {
+    return theme === 'dark' ? '#0b1220' : '#f3f4f6';
+  }
 
   /*
    * ngAfterViewInit se ejecuta cuando Angular ya creó el HTML.
@@ -218,7 +235,7 @@ export class About implements AfterViewInit, OnDestroy {
 
     // La escena contiene todos los objetos, luces y cámaras
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#f3f4f6');
+    this.scene.background = new THREE.Color(this.sceneColor(this.themeService.theme()));
 
     /*
      * Cámara en perspectiva. Parámetros:
